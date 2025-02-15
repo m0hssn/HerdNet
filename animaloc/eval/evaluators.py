@@ -28,7 +28,7 @@ from typing import Any, Optional, Dict, List, Callable
 
 import torch.nn.functional as F
 
-from ..utils.logger import CustomLogger
+from animaloc.utils.logger import CustomLogger
 
 from .stitchers import Stitcher
 from .metrics import Metrics
@@ -187,12 +187,17 @@ class Evaluator:
         for i, (images, targets) in enumerate(logger.log_every(self.dataloader, self.print_freq, self.header)):
 
             images, targets = self.prepare_data(images, targets)
+            
 
             if self.stitcher is not None:
-                output = self.stitcher(images[0])
-                output = self.post_stitcher(output)
+                output_L = []
+                for j in range(len(images)):
+                  output = self.stitcher(images[j])
+
+                  output = self.post_stitcher(output)
+                  output_L.append(output)
+                output = output_L
             else:
-                # output, _ = self.model(images, targets)  
                 output, _ = self.model(images)
 
             if viz and self.vizual_fn is not None:
@@ -200,9 +205,24 @@ class Evaluator:
                     fig = self._vizual(image = images, target = targets, output = output)
                     wandb.log({'validation_vizuals': fig})
             for b in range(images.shape[0]):
-                batch_output = self.prepare_feeding(dict(labels= targets['labels'][b], points= targets['points'][b]), (output[0][b].unsqueeze(0), output[1][b].unsqueeze(0)))
-                iter_metrics.feed(**batch_output)
-                iter_metrics.aggregate()
+                for b in range(images.shape[0]):
+                  batch_output = self.prepare_feeding(dict(labels= targets[b]['labels'], points= targets[b]['points']), (output[b][0][0].unsqueeze(0), output[b][1][0].unsqueeze(0)))
+                  
+
+                  iter_metrics.feed(**batch_output)
+                  iter_metrics.aggregate()
+
+                  iter_metrics.flush()
+
+
+            if log_meters:
+                logger.add_meter('n', sum(iter_metrics.tp) + sum(iter_metrics.fn))
+                logger.add_meter('recall', round(iter_metrics.recall(),2))
+                logger.add_meter('precision', round(iter_metrics.precision(),2))
+                logger.add_meter('f1-score', round(iter_metrics.fbeta_score(),2))
+                logger.add_meter('MAE', round(iter_metrics.mae(),2))
+                logger.add_meter('MSE', round(iter_metrics.mse(),2))
+                logger.add_meter('RMSE', round(iter_metrics.rmse(),2))
             if log_meters:
                 logger.add_meter('n', sum(iter_metrics.tp) + sum(iter_metrics.fn))
                 logger.add_meter('recall', round(iter_metrics.recall(),2))
@@ -225,8 +245,14 @@ class Evaluator:
 
             iter_metrics.flush()
             for b in range(images.shape[0]):
-                batch_output = self.prepare_feeding(dict(labels= targets['labels'][b], points= targets['points'][b]), (output[0][b].unsqueeze(0), output[1][b].unsqueeze(0)))
-                self.metrics.feed(**batch_output)
+                for b in range(images.shape[0]):
+                  batch_output = self.prepare_feeding(dict(labels= targets[b]['labels'], points= targets[b]['points']), (output[b][0][0].unsqueeze(0), output[b][1][0].unsqueeze(0)))
+                  
+
+                  self.metrics.feed(**batch_output)
+                  self.metrics.aggregate()
+
+                  self.metrics.flush()
             #self.metrics.feed(**output)
         
         self._stored_metrics = self.metrics.copy()
@@ -245,7 +271,7 @@ class Evaluator:
             wandb.run.summary['accuracy'] =  self.metrics.accuracy()
             wandb.run.summary['mAP'] =  mAP
             wandb.run.finish()
-
+  
         if returns == 'recall':
             return self.metrics.recall()
         elif returns == 'precision':
