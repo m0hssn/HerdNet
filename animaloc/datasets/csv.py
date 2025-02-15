@@ -222,13 +222,23 @@ class CSVDataset(Dataset):
         else:
             return image, target
     
-    def __getitem__(self, index: int) -> Tuple[torch.Tensor, dict]:        
-        img = self._load_image(index)
-        target = self._load_target(index)
+    def __getitem__(self, index):
+        if isinstance(index, (tuple, list)):  # Handling pair of indices
+            img1, target1 = self._load_image(index[0]), self._load_target(index[0])
+            img2, target2 = self._load_image(index[1]), self._load_target(index[1])
 
-        tr_img, tr_target = self._transforms(img, target)
+            tr_img1, tr_target1 = self._transforms(img1, target1)
+            tr_img2, tr_target2 = self._transforms(img2, target2)
 
-        return tr_img, tr_target
+            return (tr_img1, tr_target1), (tr_img2, tr_target2)
+        else:
+            img = self._load_image(index)
+            target = self._load_target(index)
+
+            tr_img, tr_target = self._transforms(img, target)
+
+            return tr_img, tr_target
+
     
     def load_end_param(self, end_param: str, value: float) -> None:
         self.end_params[end_param] = value
