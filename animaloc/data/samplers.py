@@ -89,7 +89,7 @@ class BinaryBatchSampler(Sampler):
             c0_idx = [self.c0_idx[i] for i in torch.randperm(len(self.c0_idx), generator=generator)]
             c1_idx = [self.c1_idx[i] for i in torch.randperm(len(self.c1_idx), generator=generator)]
             c0_idx, c1_idx = self._grouped(c0_idx, n=self.n), self._grouped(c1_idx, n=self.n)
-            batch_idx = [(*c0, *c1) for c0, c1 in zip(c0_idx, c1_idx)]
+            batch_idx = ((*c0, *c1) for c0, c1 in zip(c0_idx, c1_idx))
 
             yield from batch_idx
         
