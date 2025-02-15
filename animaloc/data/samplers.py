@@ -14,7 +14,6 @@ __license__ = "MIT License"
 __version__ = "0.2.1"
 
 import torch
-
 from torch.utils.data import Sampler
 from typing import Iterable, Iterator
 
@@ -77,10 +76,9 @@ class BinaryBatchSampler(Sampler):
         self.c1_idx = df.loc[df[col]==1].index.values.tolist()
         
         c0_idx, c1_idx = self._grouped(self.c0_idx, n=self.n), self._grouped(self.c1_idx, n=self.n)
-        self.batch_idx = [[*c0, *c1] for c0, c1 in zip(c0_idx, c1_idx)]
+        self.batch_idx = [(tuple(c0), tuple(c1)) for c0, c1 in zip(c0_idx, c1_idx)]  # Use tuples instead of sets
     
     def __iter__(self) -> Iterator:
-
         if self.shuffle:
             seed = int(torch.empty((), dtype=torch.int64).random_().item())
             generator = torch.Generator()
@@ -89,10 +87,9 @@ class BinaryBatchSampler(Sampler):
             c0_idx = [self.c0_idx[i] for i in torch.randperm(len(self.c0_idx), generator=generator)]
             c1_idx = [self.c1_idx[i] for i in torch.randperm(len(self.c1_idx), generator=generator)]
             c0_idx, c1_idx = self._grouped(c0_idx, n=self.n), self._grouped(c1_idx, n=self.n)
-            batch_idx = ((*c0, *c1) for c0, c1 in zip(c0_idx, c1_idx))
+            batch_idx = [(tuple(c0), tuple(c1)) for c0, c1 in zip(c0_idx, c1_idx)]  # Yield tuples directly
 
             yield from batch_idx
-        
         else:
             yield from self.batch_idx
     
