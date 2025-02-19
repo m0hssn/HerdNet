@@ -27,7 +27,8 @@ class FolderDataset(CSVDataset):
         self.data['from_folder'] = 0
         
         folder_only_images = np.setdiff1d(self.folder_images, self.data['images'].unique().tolist())
-        folder_df = pd.DataFrame({'images': folder_only_images, 'from_folder': 1})
+        folder_df = pd.DataFrame({'images': folder_only_images, 'from_folder': 1, 'labels':0})
+        
         
         self.data = pd.concat([self.data, folder_df], ignore_index=True).convert_dtypes()
         self._ordered_img_names = group_by_image(self.data)['images'].values.tolist()
