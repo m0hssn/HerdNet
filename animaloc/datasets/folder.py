@@ -65,10 +65,7 @@ class FolderDataset(CSVDataset):
     def _get_single_item(self, index: int):
         image = self._load_image(index)
         target = self._load_target(index)
-        if self.albu_transforms:
-            transformed = self.albu_transforms(image=np.array(image), **target)
-            image, target = transformed['image'], {k: transformed[k] for k in target}
-        return image, target
+        return self._transforms(image, target)
     
     def __getitem__(self, index: Union[int, Iterable[int]]):
         if isinstance(index, (list, tuple, np.ndarray)):
